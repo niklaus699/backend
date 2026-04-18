@@ -1,0 +1,25 @@
+# Core
+Django==5.0.6
+djangorestframework==3.15.2
+djangorestframework-simplejwt==5.3.1
+django-cors-headers==4.4.0
+
+# Database
+psycopg2-binary==2.9.9        # Use psycopg2 (not binary) in production
+
+# Async / background tasks
+celery==5.4.0
+redis==5.0.6
+django-celery-beat==2.6.0     # Stores beat schedule in DB — manageable via admin
+
+# HTTP client for feed ingestion
+httpx==0.27.0
+
+# CVSS score parsing
+cvss==3.2
+
+# PDF generation (for compliance reports — Phase 3)
+weasyprint==62.3
+
+# Dev / test
+django-extensions==3.2.3
