@@ -26,10 +26,6 @@ DEBUG = os.getenv("DEBUG", "False") == "True"
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-d^ae2xas6^9&sd(+1!!d*z%*jxg!8z(u*6-dv5f%(72f32%owk'
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
 
 ALLOWED_HOSTS = []
 
@@ -58,6 +54,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'apps.tenants.middleware.TenantMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -65,7 +62,6 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'apps.tenants.middleware.TenantMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -138,6 +134,7 @@ DATABASES = {
     'default': dj_database_url.config(
         default=os.getenv('DATABASE_URL'),
         conn_max_age=600,
+        engine='django.db.backends.postgresql',
     )
 }
 
@@ -169,3 +166,4 @@ CELERY_TASK_ROUTES = {
     # If you have a task in vulnerabilities:
     'apps.vulnerabilities.tasks.snapshot_risk_scores': {'queue': 'correlation'},
 }
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

@@ -19,7 +19,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenRefreshView
 
-from apps.tenants.views import LoginView
+from apps.tenants.views import LoginView, health_check
 from apps.assets.views import AssetViewSet
 from apps.vulnerabilities.views import (
     FindingViewSet,
@@ -39,4 +39,5 @@ urlpatterns = [
     path('api/auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/dashboard/stats/', DashboardStatsView.as_view(), name='dashboard_stats'),
     path('api/', include(router.urls)),
+    path('api/v1/health/', health_check, name='health_check'),
 ]

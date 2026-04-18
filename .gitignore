@@ -1,0 +1,77 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.Python
+*.egg-info/
+*.egg
+dist/
+build/
+*.log
+
+# Virtual environment
+venv/
+env/
+ENV/
+.venv
+.env
+
+# Django
+*.sqlite3
+db.sqlite3
+/staticfiles/
+/media/
+*.mo
+*.pot
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing / coverage
+.coverage
+htmlcov/
+.tox/
+.pytest_cache/
+.mypy_cache/
+
+# Local settings (if you use a local settings module)
+/local_settings.py
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# Logs
+*.log
+
+# Node modules (if using npm with Django)
+node_modules/
+
+# Backup files
+*.bak
+*.tmp
+
+# Secrets / keys
+*.key
+*.pem
+*.crt
+
+# Uploaded media (uncomment if you don't track media in git)
+# /media/
+
+# Static files collected by collectstatic
+/staticfiles/
+/static_root/
+
+# Docker (optional)
+.dockerignore

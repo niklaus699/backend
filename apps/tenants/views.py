@@ -1,4 +1,5 @@
 from django.shortcuts import render
+from django.http import JsonResponse
 
 # Create your views here.
 from rest_framework.views import APIView
@@ -20,3 +21,7 @@ class LoginView(APIView):
         )
         serializer.is_valid(raise_exception=True)
         return Response(serializer.validated_data)
+    
+
+def health_check(request):
+    return JsonResponse({"status": "healthy"})
