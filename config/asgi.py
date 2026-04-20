@@ -8,17 +8,16 @@ https://docs.djangoproject.com/en/6.0/howto/deployment/asgi/
 """
 
 import os
-
 from django.core.asgi import get_asgi_application
-from channels.routing import ProtocolTypeRouter, URLRouter
-from channels.security.websocket import AllowedHostsOriginValidator
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings.local')
-
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings.production')
 django_asgi_app = get_asgi_application()
 
-from apps.vulnerabilities.consumers import DashboardConsumer
+
+from channels.routing import ProtocolTypeRouter, URLRouter
+from channels.security.websocket import AllowedHostsOriginValidator
 from django.urls import re_path
+from apps.vulnerabilities.consumers import DashboardConsumer
 
 websocket_urlpatterns = [
     re_path(r'ws/dashboard/$', DashboardConsumer.as_asgi()),
