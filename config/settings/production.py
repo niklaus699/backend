@@ -12,10 +12,15 @@ DEBUG = False
 SECRET_KEY = os.getenv('SECRET_KEY') or os.getenv('DJANGO_SECRET_KEY')
 if not SECRET_KEY:
     raise ImproperlyConfigured('SECRET_KEY environment variable is required')
+
+
 ALLOWED_HOSTS = env_list('ALLOWED_HOSTS')
 
-if not ALLOWED_HOSTS:
+if not ALLOWED_HOSTS and SECRET_KEY != 'build-dummy':
     raise ImproperlyConfigured('ALLOWED_HOSTS must be configured for production')
+elif not ALLOWED_HOSTS:
+    # Fallback for collectstatic during docker build
+    ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 CORS_ALLOWED_ORIGINS = env_list('CORS_ALLOWED_ORIGINS')
 CSRF_TRUSTED_ORIGINS = env_list('CSRF_TRUSTED_ORIGINS')
@@ -28,6 +33,11 @@ db_config = dj_database_url.config(
 db_config.setdefault('OPTIONS', {})
 db_config['OPTIONS']['sslmode'] = os.getenv('DB_SSLMODE', 'require')
 DATABASES = {'default': db_config}
+
+
+INSTALLED_APPS += [
+    'whitenoise.runserver_nostatic', # Optional, for whitenoise
+]
 
 CACHES = {
     'default': {
