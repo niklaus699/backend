@@ -8,7 +8,8 @@ __pycache__/
 dist/
 build/
 *.log
-
+*.codex
+*.coverage
 # Virtual environment
 venv/
 env/
