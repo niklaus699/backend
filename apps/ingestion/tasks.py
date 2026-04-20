@@ -457,55 +457,77 @@ def _normalize_package_name(name: str, ecosystem: str) -> str:
 
 
 @shared_task(name="apps.ingestion.tasks.correlate_new_packages")
-def correlate_new_packages_for_asset(asset_id: str, organization_id: str):
-    """
-    Called after an asset is scanned and new packages are reported.
-    Checks every package on the asset against ALL known vulnerabilities
-    that mention that package name + ecosystem.
-    """
-    with tenant_context(organization_id):
+def correlate_new_packages_for_asset(asset_id: str):
+    try:
+        asset = Asset.objects.prefetch_related('packages').get(id=asset_id)
+    except Asset.DoesNotExist:
+        return
+
+    packages = list(asset.packages.all())
+    if not packages:
+        return
+
+    logger.info(f"Correlating {len(packages)} packages for asset {asset.name}")
+
+    findings_created = 0
+
+    for pkg in packages:
+        norm_name = _normalize_package_name(pkg.name, pkg.ecosystem)
+
+        # Step 1 — fetch vulnerabilities for this specific package from OSV
         try:
-            asset = Asset.objects.prefetch_related('packages').get(id=asset_id)
-        except Asset.DoesNotExist:
-            return
+            with httpx.Client(timeout=30) as client:
+                response = client.post(
+                    "https://api.osv.dev/v1/query",
+                    json={"package": {"name": pkg.name, "ecosystem": pkg.ecosystem}}
+                )
+                response.raise_for_status()
+            osv_vulns = response.json().get("vulns", [])
+        except Exception as e:
+            logger.warning(f"OSV query failed for {pkg.ecosystem}/{pkg.name}: {e}")
+            continue
 
-        packages = list(asset.packages.all())
-        if not packages:
-            return
+        if not osv_vulns:
+            continue
 
-        all_vulns = Vulnerability.objects.all()
+        # Step 2 — upsert each vulnerability into our DB
+        for vuln_data in osv_vulns:
+            if "id" not in vuln_data:
+                continue
+            vuln, _ = Vulnerability.objects.update_or_create(
+                id=vuln_data["id"],
+                defaults=_parse_osv_vuln(vuln_data)
+            )
 
-        for pkg in packages:
-            norm_name = _normalize_package_name(pkg.name, pkg.ecosystem)
+            # Step 3 — check if this specific installed version is affected
+            affected_specs = _extract_affected_specs(vuln)
             key = (pkg.ecosystem, norm_name)
 
-            for vuln in all_vulns:
-                affected_specs = _extract_affected_specs(vuln)
-                if key not in affected_specs:
-                    continue
+            if key not in affected_specs:
+                continue
 
-                if not is_version_affected(pkg.version, affected_specs[key], pkg.ecosystem):
-                    continue
+            if not is_version_affected(pkg.version, affected_specs[key], pkg.ecosystem):
+                continue
 
-                ctx = ScoringContext(
-                    cvss_score=vuln.cvss_score,
-                    severity=vuln.severity,
-                    asset_environment=asset.environment,
-                    asset_type=asset.asset_type,
-                )
-                Finding.objects.update_or_create(
-                    asset=asset,
-                    vulnerability=vuln,
-                    package=pkg,
-                    defaults={
-                        "status": Finding.Status.OPEN,
-                        "risk_score": calculate_finding_risk_score(ctx),
-                    },
-                )
+            # Step 4 — create the finding
+            ctx = ScoringContext(
+                cvss_score=vuln.cvss_score,
+                severity=vuln.severity,
+                asset_environment=asset.environment,
+                asset_type=asset.asset_type,
+            )
+            _, created = Finding.objects.update_or_create(
+                asset=asset,
+                vulnerability=vuln,
+                package=pkg,
+                defaults={
+                    "status": Finding.Status.OPEN,
+                    "risk_score": calculate_finding_risk_score(ctx),
+                },
+            )
+            if created:
+                findings_created += 1
+                logger.info(f"Finding created: {vuln.id} affects {pkg.name}@{pkg.version} on {asset.name}")
 
-    rescore_and_broadcast_asset.apply_async(
-        kwargs={
-            "asset_id": asset_id,
-            "organization_id": organization_id,
-        }
-    )
+    logger.info(f"Asset {asset.name}: {findings_created} new findings")
+    rescore_and_broadcast_asset.apply_async(kwargs={"asset_id": asset_id})
