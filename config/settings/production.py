@@ -53,21 +53,17 @@ CACHES = {
         'LOCATION': os.getenv('CACHE_URL', os.getenv('REDIS_URL', 'redis://127.0.0.1:6379/1')),
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            'IGNORE_EXCEPTIONS': True,
+            'SOCKET_CONNECT_TIMEOUT': 5,
+            'SOCKET_TIMEOUT': 5,
             'CONNECTION_POOL_KWARGS': {
-                'ssl_cert_reqs': None
+                'ssl_cert_reqs': None,
+                'retry_on_timeout': True,
             }
         },
     }
 }
 
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {
-            "hosts": [os.getenv('REDIS_URL', 'redis://127.0.0.1:6379/0')],
-        },
-    },
-}
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = os.getenv('EMAIL_HOST', '')
@@ -181,3 +177,25 @@ if SENTRY_DSN:
             traces_sample_rate=float(os.getenv('SENTRY_TRACES_SAMPLE_RATE', '0.1')),
             environment=os.getenv('ENVIRONMENT', 'production'),
         )
+
+
+# Fix for Celery using Upstash SSL
+CELERY_BROKER_USE_SSL = {
+    'ssl_cert_reqs': None
+}
+CELERY_REDIS_BACKEND_USE_SSL = {
+    'ssl_cert_reqs': None
+}
+
+# Fix for Channels (WebSockets) using Upstash SSL
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [{
+                "address": os.getenv('REDIS_URL'),
+                "ssl_cert_reqs": None,
+            }],
+        },
+    },
+}
