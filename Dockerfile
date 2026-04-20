@@ -23,14 +23,14 @@ RUN pip install --no-cache-dir -r requirements/production.txt
 # We do this as root first to run collectstatic
 COPY . .
 
-# 6. Fix permissions and switch user
-RUN chown -R appuser:appuser /app
-USER appuser
+
 # 5. Prepare Static Files
 # We use a dummy Secret Key so Django doesn't complain during the build
 RUN SECRET_KEY=build-dummy DJANGO_SECRET_KEY=build-dummy python manage.py collectstatic --noinput
 
-
+# 6. Fix permissions and switch user
+RUN chown -R appuser:appuser /app
+USER appuser
 
 
 EXPOSE 8000
