@@ -8,7 +8,10 @@ from .base import *
 from .utils import env_bool, env_int, env_list, env_required
 
 DEBUG = False
-SECRET_KEY = env_required('SECRET_KEY')
+# Uses the real key if present, falls back to the build-dummy only during Docker build
+SECRET_KEY = os.getenv('SECRET_KEY') or os.getenv('DJANGO_SECRET_KEY')
+if not SECRET_KEY:
+    raise ImproperlyConfigured('SECRET_KEY environment variable is required')
 ALLOWED_HOSTS = env_list('ALLOWED_HOSTS')
 
 if not ALLOWED_HOSTS:
