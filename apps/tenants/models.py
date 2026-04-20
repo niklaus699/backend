@@ -1,4 +1,5 @@
 import uuid
+from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.db import models
 
 
@@ -30,11 +31,38 @@ class Organization(models.Model):
         return self.name
 
 
-class User(models.Model):
+class UserManager(BaseUserManager):
+    use_in_migrations = True
+
+    def _create_user(self, email: str, password: str | None, **extra_fields):
+        if not email:
+            raise ValueError("Users must have an email address")
+
+        email = self.normalize_email(email).lower()
+        user = self.model(email=email, **extra_fields)
+
+        if password:
+            user.set_password(password)
+        else:
+            user.set_unusable_password()
+
+        user.save(using=self._db)
+        return user
+
+    def create_user(self, email: str, password: str | None = None, **extra_fields):
+        extra_fields.setdefault("role", "viewer")
+        return self._create_user(email, password, **extra_fields)
+
+    def create_superuser(self, email: str, password: str, **extra_fields):
+        extra_fields.setdefault("role", "owner")
+        return self._create_user(email, password, **extra_fields)
+
+
+class User(AbstractBaseUser):
     """
-    Deliberately not using AbstractUser — we don't need Django's auth
-    session machinery. JWT handles auth; this is just a profile record.
-    In production you'd inherit AbstractBaseUser for password hashing.
+    Lightweight custom user model for JWT-based auth.
+    We keep the existing database column name for backwards compatibility,
+    while using Django's built-in password helpers through AbstractBaseUser.
     """
     class Role(models.TextChoices):
         OWNER = 'owner', 'Owner'
@@ -50,19 +78,27 @@ class User(models.Model):
     )
     email = models.EmailField(unique=True)
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.VIEWER)
-    password_hash = models.CharField(max_length=255, null=True)
-    last_login = models.DateTimeField(null=True, blank=True)
-    # Inside your User model
-    @property
-    def is_active(self):
-        return True  # Or your logic
+    password = models.CharField(max_length=255, db_column='password_hash')
+    REQUIRED_FIELDS = []
+    USERNAME_FIELD = 'email'
+    objects = UserManager()
 
     @property
-    def pk(self):
-        return self.id
-    
-    @property
-    def is_authenticated(self):
+    def is_active(self):
+        if self.organization_id:
+            return self.organization.is_active
         return True
+
+    @property
+    def is_staff(self):
+        return self.role in {self.Role.OWNER, self.Role.ADMIN}
+
+    def save(self, *args, **kwargs):
+        self.email = self.__class__.objects.normalize_email(self.email).lower()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.email
+
     class Meta:
         db_table = 'tenants_user'

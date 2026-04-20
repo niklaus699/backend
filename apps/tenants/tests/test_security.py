@@ -13,19 +13,15 @@ class TestTenantIsolation:
     and Database (RLS) levels.
     """
 
-    def test_tenant_a_cannot_access_tenant_b_asset(self, api_client, tenant_a_user, tenant_b_asset):
+    def test_tenant_a_cannot_access_tenant_b_asset(self, authenticated_client, tenant_b_asset):
         """
         GIVEN: User is authenticated as Tenant A.
         WHEN: They attempt to access an Asset ID belonging to Tenant B.
         THEN: The system returns 403 or 404, preventing cross-tenant data leakage.
         """
-        api_client.force_authenticate(user=tenant_a_user)
-        
         url = reverse('asset-detail', kwargs={'pk': tenant_b_asset.pk})
-        response = api_client.get(url)
-        
-        # Accept 403 (Forbidden) or 404 (Not Found) as valid security responses
-        assert response.status_code in [status.HTTP_403_FORBIDDEN, status.HTTP_404_NOT_FOUND]
+        response = authenticated_client.get(url)
+        assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_database_level_rls_integrity(self):
         """

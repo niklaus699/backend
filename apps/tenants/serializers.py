@@ -1,7 +1,9 @@
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework import serializers
-from django.contrib.auth.hashers import check_password
+from django.contrib.auth import password_validation
+from django.db import transaction
+from django.utils.text import slugify
 
 from apps.tenants.models import User, Organization
 
@@ -29,7 +31,7 @@ class SentinelTokenObtainSerializer(TokenObtainPairSerializer):
         except User.DoesNotExist:
             raise serializers.ValidationError('Invalid credentials.')
 
-        if not check_password(password, user.password_hash):
+        if not user.check_password(password):
             raise serializers.ValidationError('Invalid credentials.')
 
         if not user.organization.is_active:
@@ -73,3 +75,60 @@ class SentinelTokenObtainSerializer(TokenObtainPairSerializer):
         for key, value in claims.items():
             refresh[key] = value
             refresh.access_token[key] = value
+
+class RegisterSerializer(serializers.Serializer):
+    # Organization fields
+    organization_name = serializers.CharField(max_length=255)
+
+    # User fields
+    email    = serializers.EmailField()
+    password = serializers.CharField(min_length=8, write_only=True)
+    confirm_password = serializers.CharField(write_only=True)
+
+    def validate_email(self, value):
+        value = User.objects.normalize_email(value).lower().strip()
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError(
+                'An account with this email already exists.'
+            )
+        return value
+
+    def validate_organization_name(self, value):
+        value = value.strip()
+        slug = slugify(value)
+        if Organization.objects.filter(slug=slug).exists():
+            raise serializers.ValidationError(
+                'An organization with this name already exists.'
+            )
+        return value
+
+    def validate(self, attrs):
+        if attrs['password'] != attrs['confirm_password']:
+            raise serializers.ValidationError({
+                'confirm_password': 'Passwords do not match.'
+            })
+
+        password_validation.validate_password(attrs['password'])
+        return attrs
+
+    @transaction.atomic
+    def create(self, validated_data):
+        """
+        Create the Organization and its first User (owner) atomically.
+        If either insert fails, both roll back — no orphaned orgs or users.
+        """
+        org = Organization.objects.create(
+            name=validated_data['organization_name'],
+            slug=slugify(validated_data['organization_name']),
+            plan_tier=Organization.PlanTier.FREE,
+            is_active=True,
+        )
+
+        user = User.objects.create_user(
+            organization=org,
+            email=validated_data['email'],
+            password=validated_data['password'],
+            role=User.Role.OWNER,  # First user is always the org owner
+        )
+
+        return org, user

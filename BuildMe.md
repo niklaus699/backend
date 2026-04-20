@@ -15,6 +15,7 @@ python manage.py migrate
 python manage.py runserver  # or: daphne config.asgi:application -p 8000
 
 # Terminal 2 — Celery worker: ingestion queue
+source .venv/bin/activate
 celery -A config worker \
   --queues=ingestion \
   --concurrency=2 \
@@ -22,6 +23,7 @@ celery -A config worker \
   --hostname=ingestion@%h
 
 # Terminal 3 — Celery worker: correlation queue (separate pool)
+source .venv/bin/activate
 celery -A config worker \
   --queues=correlation \
   --concurrency=4 \
@@ -29,6 +31,7 @@ celery -A config worker \
   --hostname=correlation@%h
 
 # Terminal 4 — Celery Beat scheduler
+source .venv/bin/activate
 celery -A config beat \
   --loglevel=info \
   --scheduler django_celery_beat.schedulers:DatabaseScheduler

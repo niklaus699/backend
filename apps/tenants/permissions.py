@@ -3,7 +3,7 @@ from rest_framework.permissions import BasePermission
 
 class IsAnalystOrAbove(BasePermission):
     """Viewers can read. Analysts and above can read."""
-    ALLOWED_ROLES = {'analyst', 'admin', 'owner'}
+    ALLOWED_ROLES = {'viewer', 'analyst', 'admin', 'owner'}
 
     def has_permission(self, request, view):
         return (

@@ -9,12 +9,15 @@ app.config_from_object('django.conf:settings', namespace='CELERY')
 app.autodiscover_tasks(['apps.ingestion', 'apps.vulnerabilities'])
 
 app.conf.beat_schedule = {
-    'ingest-all-ecosystems-every-6h': {
+    'ingest-all-ecosystems': {
         'task': 'apps.ingestion.tasks.trigger_all_ecosystems',
-        'schedule': crontab(minute=0, hour='*/6'),
+        'schedule': crontab(
+            minute=int(os.getenv('INGEST_SCHEDULE_MINUTE', '0')),
+            hour=os.getenv('INGEST_SCHEDULE_HOUR', '*/6'),
+        ),
     },
     'snapshot-risk-scores-hourly': {
         'task': 'apps.vulnerabilities.tasks.snapshot_risk_scores',
-        'schedule': crontab(minute=5),  # offset 5min from ingestion
+        'schedule': crontab(minute=int(os.getenv('SNAPSHOT_SCHEDULE_MINUTE', '5'))),
     },
 }

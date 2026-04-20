@@ -1,22 +1,17 @@
 import pytest
-from django.contrib.auth.hashers import make_password
-from django.db import connection
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
 
-# Adjust these imports based on your actual model locations
+from apps.tenants.context import tenant_context
 from apps.tenants.models import Organization, User
-from apps.assets.models import Asset
+from apps.assets.models import Asset, Package
+from apps.vulnerabilities.models import Vulnerability, Finding
 from apps.vulnerabilities.version_matching import AffectedRange, RangeType, VersionEvent
 
-# --- General Fixtures ---
 
 @pytest.fixture
 def api_client():
-    """A basic DRF test client."""
     return APIClient()
-
-# --- Tenant & User Fixtures ---
 
 @pytest.fixture
 def tenant_a(db):
@@ -28,56 +23,88 @@ def tenant_b(db):
 
 @pytest.fixture
 def tenant_a_user(tenant_a):
-    with connection.cursor() as cursor:
-        cursor.execute(f"SET sentinel.current_tenant_id = '{tenant_a.id}';")
-        user = User.objects.create(
-            email="niklaus@sentinel.com",
-            organization=tenant_a,
-            password_hash=make_password("securepassword123"),
-            role="admin")
-        cursor.execute("RESET ALL;")
-        return user
+    return User.objects.create_user(
+        email="niklaus@sentinel.com",
+        organization=tenant_a,
+        password="securepassword123",
+        role=User.Role.ADMIN,
+    )
+
+
+@pytest.fixture
+def tenant_b_user(tenant_b):
+    return User.objects.create_user(
+        email="pepper@stark.com",
+        organization=tenant_b,
+        password="securepassword123",
+        role=User.Role.ADMIN,
+    )
 
 @pytest.fixture
 def tenant_a_context(tenant_a):
-    """Provides just the tenant object for raw SQL session tests."""
     return tenant_a
-
-# --- Asset Fixtures ---
 
 @pytest.fixture
 def tenant_a_asset(tenant_a):
-    # IMPORTANT: We must bypass RLS to create the test data
-    with connection.cursor() as cursor:
-        cursor.execute(f"SET sentinel.current_tenant_id = '{tenant_a.id}';")
-        asset = Asset.objects.create(
-            name="Production Web Server", 
-            organization=tenant_a, # Use 'organization', not 'tenant'
-            ip_address="192.168.1.10"
+    with tenant_context(tenant_a.id):
+        return Asset.objects.create(
+            name="Production Web Server",
+            organization=tenant_a,
+            asset_type=Asset.AssetType.SERVER,
+            environment=Asset.Environment.PRODUCTION,
+            hostname="web-01.cyberdyne.local",
+            ip_address="192.168.1.10",
         )
-        cursor.execute("RESET ALL;")
-        return asset
 
 @pytest.fixture
 def tenant_b_asset(tenant_b):
-    from django.db import connection
-    with connection.cursor() as cursor:
-        # Manually set the session variable so the INSERT is allowed
-        cursor.execute(f"SET LOCAL sentinel.current_tenant_id = '{tenant_b.id}';")
-        asset = Asset.objects.create(
+    with tenant_context(tenant_b.id):
+        return Asset.objects.create(
             name="Stark Secret Database",
             organization=tenant_b,
-            ip_address="10.0.0.5"
+            asset_type=Asset.AssetType.DATABASE,
+            environment=Asset.Environment.PRODUCTION,
+            hostname="db-01.stark.local",
+            ip_address="10.0.0.5",
         )
-        # Reset it after
-        cursor.execute("RESET ALL;")
-        return asset
 
-# --- Vulnerability / OSV Fixtures ---
+@pytest.fixture
+def tenant_a_package(tenant_a, tenant_a_asset):
+    with tenant_context(tenant_a.id):
+        return Package.objects.create(
+            asset=tenant_a_asset,
+            name="django",
+            version="6.0.4",
+            ecosystem="PyPI",
+        )
+
+
+@pytest.fixture
+def sample_vulnerability():
+    return Vulnerability.objects.create(
+        id="CVE-2099-0001",
+        source=Vulnerability.Source.OSV,
+        summary="Test vulnerability",
+        severity=Vulnerability.Severity.HIGH,
+        cvss_score=8.8,
+        affected_ranges=[],
+        references=["https://example.com/advisory"],
+    )
+
+
+@pytest.fixture
+def tenant_a_finding(tenant_a, tenant_a_asset, tenant_a_package, sample_vulnerability):
+    with tenant_context(tenant_a.id):
+        return Finding.objects.create(
+            asset=tenant_a_asset,
+            vulnerability=sample_vulnerability,
+            package=tenant_a_package,
+            status=Finding.Status.OPEN,
+            risk_score=88,
+        )
 
 @pytest.fixture
 def sample_osv_range():
-    """A standard vulnerability range for version matching tests."""
     return [
         AffectedRange(
             range_type=RangeType.ECOSYSTEM, 
@@ -88,16 +115,11 @@ def sample_osv_range():
         )
     ]
 
-# --- Helper Logic ---
-
 @pytest.fixture
 def authenticated_client(api_client, tenant_a_user):
-    """An API client that is already logged in as Tenant A."""
-    # Ensure organization is loaded for the serializer claims
     from apps.tenants.serializers import SentinelTokenObtainSerializer
 
     refresh = RefreshToken.for_user(tenant_a_user)
-    # Inject the specific claims your middleware needs
     SentinelTokenObtainSerializer._inject_claims(refresh, tenant_a_user)
 
     api_client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}')

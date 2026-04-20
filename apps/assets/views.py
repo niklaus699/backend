@@ -1,14 +1,12 @@
-from django.shortcuts import render
-
-# Create your views here.
 from django.db.models import Count, Q, Prefetch
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
-from rest_framework.response import Response
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
 from apps.tenants.permissions import IsAdminOrAbove, IsAnalystOrAbove
-from apps.assets.models import Asset, Package
+from apps.assets.models import Asset
 from apps.assets.serializers import (
     AssetListSerializer,
     AssetDetailSerializer,
@@ -18,6 +16,12 @@ from apps.vulnerabilities.models import Finding, RiskSnapshot
 from apps.vulnerabilities.serializers import RiskSnapshotSerializer
 
 
+class AssetPagination(PageNumberPagination):
+    page_size = 20
+    # This is likely the culprit in your global settings. 
+    # We set it to None here to force it to use the ViewSet's ordering.
+    ordering = None
+
 class AssetViewSet(viewsets.ModelViewSet):
     """
     /api/assets/           GET (list), POST (create)
@@ -25,7 +29,10 @@ class AssetViewSet(viewsets.ModelViewSet):
     /api/assets/{id}/risk-history/   GET — time-series for trend chart
     /api/assets/{id}/scan/           POST — trigger re-scan
     """
+    pagination_class = AssetPagination
     permission_classes = [IsAuthenticated, IsAnalystOrAbove]
+    ordering_fields = ['risk_score', 'last_scanned', 'name', 'open_findings_count']
+    ordering = ['-risk_score']
 
     def get_permissions(self):
         if self.action in ('create', 'update', 'partial_update', 'destroy', 'trigger_scan'):
@@ -41,15 +48,12 @@ class AssetViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """
-        RLS handles tenant isolation — we don't filter by org here.
-        But we DO annotate with aggregated finding counts so the list
-        view doesn't trigger N+1 queries.
-
-        This single query replaces what would otherwise be:
-          for asset in assets:
-              count = Finding.objects.filter(asset=asset).count()  # N queries
+        Apply organization scoping defensively at the application layer
+        in addition to the database-level RLS policy.
         """
-        qs = Asset.objects.annotate(
+        org_id = self.request.auth['organization_id']
+
+        qs = Asset.objects.filter(organization_id=org_id).annotate(
             open_findings_count=Count(
                 'findings',
                 filter=Q(findings__status=Finding.Status.OPEN)
@@ -80,14 +84,18 @@ class AssetViewSet(viewsets.ModelViewSet):
         if asset_type:
             qs = qs.filter(asset_type=asset_type)
 
-        return qs
+        return qs.order_by('-risk_score', 'id')
 
     def get_object(self):
         """
         For detail views, prefetch open findings and packages
         to avoid N+1 on the serializer.
         """
-        obj = Asset.objects.prefetch_related(
+        org_id = self.request.auth['organization_id']
+
+        obj = Asset.objects.filter(
+            organization_id=org_id
+        ).prefetch_related(
             Prefetch(
                 'findings',
                 queryset=Finding.objects.filter(
@@ -137,7 +145,10 @@ class AssetViewSet(viewsets.ModelViewSet):
 
         from apps.ingestion.tasks import correlate_new_packages_for_asset
         correlate_new_packages_for_asset.apply_async(
-            kwargs={'asset_id': str(asset.id)},
+            kwargs={
+                'asset_id': str(asset.id),
+                'organization_id': str(asset.organization_id),
+            },
             queue='correlation',
         )
 

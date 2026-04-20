@@ -1,11 +1,10 @@
-from django.shortcuts import render
-
-# Create your views here.
 from django.db.models import Count, Avg, Q
 from rest_framework import viewsets, mixins, status
 from rest_framework.decorators import action
-from rest_framework.response import Response
+from rest_framework.pagination import CursorPagination
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from apps.tenants.permissions import IsAnalystOrAbove, IsAdminOrAbove
@@ -16,6 +15,10 @@ from apps.vulnerabilities.serializers import (
     VulnerabilitySerializer,
     DashboardStatsSerializer,
 )
+
+
+class FindingPagination(CursorPagination):
+    ordering = '-risk_score'
 
 
 class FindingViewSet(
@@ -33,14 +36,19 @@ class FindingViewSet(
     """
     permission_classes = [IsAuthenticated, IsAnalystOrAbove]
     serializer_class = FindingDetailSerializer
+    pagination_class = FindingPagination
+    ordering_fields = ['risk_score', 'first_seen', 'status']
+    ordering = ['-risk_score', '-first_seen']
 
     def get_queryset(self):
         """
         Highly filterable — the frontend uses these params for the
         findings table with column filters.
         """
+        org_id = self.request.auth['organization_id']
         qs = (
             Finding.objects
+            .filter(asset__organization_id=org_id)
             .select_related('vulnerability', 'asset', 'package')
             .order_by('-risk_score', '-first_seen')
         )
@@ -83,11 +91,30 @@ class FindingViewSet(
         if finding.status in (Finding.Status.RESOLVED, Finding.Status.ACCEPTED):
             from apps.ingestion.tasks import rescore_and_broadcast_asset
             rescore_and_broadcast_asset.apply_async(
-                kwargs={'asset_id': str(finding.asset_id)},
+                kwargs={
+                    'asset_id': str(finding.asset_id),
+                    'organization_id': str(request.auth['organization_id']),
+                },
                 countdown=1,
             )
 
         return Response(FindingDetailSerializer(finding).data)
+
+
+class DiscoveryScanView(APIView):
+    """
+    POST /api/discovery/scan/
+
+    Triggers a global vulnerability ingestion scan across all ecosystems.
+    """
+    permission_classes = [IsAuthenticated, IsAdminOrAbove]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'discovery'
+
+    def post(self, request):
+        from apps.ingestion.tasks import trigger_all_ecosystems
+        trigger_all_ecosystems.apply_async(queue='ingestion')
+        return Response({'detail': 'Discovery scan queued'}, status=status.HTTP_202_ACCEPTED)
 
 
 class DashboardStatsView(APIView):
@@ -102,16 +129,18 @@ class DashboardStatsView(APIView):
 
     def get(self, request):
         from apps.assets.models import Asset
+        org_id = request.auth['organization_id']
 
         # All stats in two queries — one for asset-level data,
         # one for finding-level data
-        asset_stats = Asset.objects.aggregate(
+        asset_stats = Asset.objects.filter(organization_id=org_id).aggregate(
             total_assets=Count('id'),
             avg_risk_score=Avg('risk_score'),
         )
 
         finding_stats = Finding.objects.filter(
-            status=Finding.Status.OPEN
+            asset__organization_id=org_id,
+            status=Finding.Status.OPEN,
         ).aggregate(
             total_open=Count('id'),
             critical=Count('id', filter=Q(risk_score__gte=90)),
@@ -121,6 +150,7 @@ class DashboardStatsView(APIView):
         # The single most critical asset — for the "top threat" card
         most_critical = (
             Asset.objects
+            .filter(organization_id=org_id)
             .filter(risk_score__gt=0)
             .order_by('-risk_score')
             .values('id', 'name', 'risk_score', 'environment')
@@ -143,6 +173,11 @@ class DashboardStatsView(APIView):
         return Response(serializer.data)
 
 
+class VulnerabilityPagination(CursorPagination):
+    ordering = '-published_at'
+    page_size = 50
+
+
 class VulnerabilityViewSet(
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
@@ -155,9 +190,12 @@ class VulnerabilityViewSet(
     """
     permission_classes = [IsAuthenticated]
     serializer_class = VulnerabilitySerializer
+    pagination_class = VulnerabilityPagination
+    ordering_fields = ['published_at', 'severity', 'id']
+    ordering = ['-published_at']
 
     def get_queryset(self):
-        qs = Vulnerability.objects.order_by('-published_at')
+        qs = Vulnerability.objects.all()
 
         if severity := self.request.query_params.get('severity'):
             qs = qs.filter(severity=severity)

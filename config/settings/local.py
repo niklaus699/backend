@@ -1,41 +1,39 @@
 from .base import *
+from datetime import timedelta
 
-# Override DEBUG for local development
 DEBUG = True
-
-# Overwrite ALLOWED_HOSTS for local testing
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
 
-# Enable Django Toolbar or other dev-only tools here if needed
-# INSTALLED_APPS += ['debug_toolbar']
-# MIDDLEWARE += ['debug_toolbar.middleware.DebugToolbarMiddleware']
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
 
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-# config/settings/local.py
-
-CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://127.0.0.1:6379/0')
-CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
-
-#Comment out Sentry for local development to avoid noise
-SECURE_HSTS_SECONDS = 31536000
-SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-SECURE_HSTS_PRELOAD = True
-SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-SECURE_SSL_REDIRECT = False
-
-
-DATABASES = {
-    'default': dj_database_url.config(
-        default=os.getenv('DATABASE_URL'),
-        conn_max_age=600,
-    )
+SIMPLE_JWT = {
+    **SIMPLE_JWT,
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=1), # Long life for dev
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'SIGNING_KEY': SECRET_KEY,
 }
 
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {
-            "hosts": [("127.0.0.1", 6379)],
-        },
+# Merge REST_FRAMEWORK settings for development
+REST_FRAMEWORK = {
+    **REST_FRAMEWORK,
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '1000/hour',      # More lenient for development
+        'user': '10000/hour',     # More lenient for development
+        'login': '100/hour',      # More lenient for development
+        'discovery': '1000/hour', # More lenient for development
+        'ingestion': '10000/hour',# More lenient for development
     },
 }
+
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

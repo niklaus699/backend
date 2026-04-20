@@ -1,3 +1,5 @@
+import asyncio
+import contextlib
 import json
 import logging
 
@@ -14,11 +16,10 @@ class DashboardConsumer(AsyncWebsocketConsumer):
     so a single Celery broadcast reaches every connected client.
 
     URL pattern: ws://host/ws/dashboard/
-    Auth: JWT token passed as query param ?token=<jwt>
+    Auth: JWT token passed in the WebSocket subprotocol list.
     """
 
     async def connect(self):
-        # Extract and validate JWT from query string
         token = self._get_token_from_scope()
         org_id = await self._validate_token(token)
 
@@ -31,11 +32,16 @@ class DashboardConsumer(AsyncWebsocketConsumer):
 
         # Join the organization's broadcast group
         await self.channel_layer.group_add(self.group_name, self.channel_name)
-        await self.accept()
+        await self.accept(subprotocol="bearer")
+        self.heartbeat_task = asyncio.create_task(self._send_heartbeat())
 
         logger.info(f"WebSocket connected: org={org_id}")
 
     async def disconnect(self, close_code):
+        if hasattr(self, 'heartbeat_task'):
+            self.heartbeat_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await self.heartbeat_task
         if hasattr(self, 'group_name'):
             await self.channel_layer.group_discard(self.group_name, self.channel_name)
 
@@ -70,15 +76,16 @@ class DashboardConsumer(AsyncWebsocketConsumer):
             }
         }))
 
+    async def _send_heartbeat(self):
+        while True:
+            await asyncio.sleep(30)
+            await self.send(text_data=json.dumps({"type": "ping"}))
+
     def _get_token_from_scope(self) -> str | None:
-        """Parse JWT from WebSocket query string: ?token=eyJ..."""
-        query_string = self.scope.get("query_string", b"").decode()
-        params = dict(
-            part.split("=", 1)
-            for part in query_string.split("&")
-            if "=" in part
-        )
-        return params.get("token")
+        subprotocols = self.scope.get("subprotocols", [])
+        if len(subprotocols) >= 2 and subprotocols[0] == "bearer":
+            return subprotocols[1]
+        return None
 
     @database_sync_to_async
     def _validate_token(self, token: str | None) -> str | None:

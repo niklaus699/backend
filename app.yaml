@@ -1,0 +1,46 @@
+runtime: custom
+env: flex
+
+# Service configuration
+service: sentinel-backend
+runtime_config:
+  operating_system: ubuntu22
+
+# Environment variables (set via Cloud Run environment)
+env_variables:
+  DJANGO_SETTINGS_MODULE: "config.settings.production"
+  PORT: "8000"
+
+# Scaling configuration (free tier)
+automatic_scaling:
+  min_instances: 1
+  max_instances: 2
+  cool_down_period_sec: 60
+  cpu_utilization:
+    target_utilization: 0.7
+
+# Resources (free tier: 1 vCPU, 512MB RAM)
+resources:
+  cpu: 1
+  memory_gb: 0.5
+  disk_size_gb: 10
+
+# Network
+network:
+  session_affinity: "CLIENT_IP"
+
+# Security headers
+handlers:
+  - url: ".*"
+    secure: always
+    redirect_http_response_code: 301
+
+# Timeouts
+timeout_sec: 3600
+
+# Health check
+health_check:
+  type: "HTTP"
+  path: "/api/health/"
+  check_interval_sec: 5
+  timeout_sec: 4

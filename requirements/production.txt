@@ -1,0 +1,6 @@
+-r base.txt
+django-redis==6.0.0
+drf-spectacular==0.29.0
+gunicorn==23.0.0
+sentry-sdk==2.39.0
+whitenoise==6.11.0
