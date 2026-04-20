@@ -143,10 +143,7 @@ class AssetIngestionView(APIView):
         # Trigger correlation outside the transaction
         from apps.ingestion.tasks import correlate_new_packages_for_asset
         correlate_new_packages_for_asset.apply_async(
-            kwargs={
-                'asset_id': str(asset.id),
-                'organization_id': str(org.id),
-            },
+            kwargs={'asset_id': str(asset.id),},
             queue='correlation',
         )
 

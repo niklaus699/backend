@@ -530,4 +530,10 @@ def correlate_new_packages_for_asset(asset_id: str):
                 logger.info(f"Finding created: {vuln.id} affects {pkg.name}@{pkg.version} on {asset.name}")
 
     logger.info(f"Asset {asset.name}: {findings_created} new findings")
-    rescore_and_broadcast_asset.apply_async(kwargs={"asset_id": asset_id})
+    rescore_and_broadcast_asset.apply_async(
+        kwargs={
+            "asset_id": str(asset.id),
+            "organization_id": str(asset.organization_id),
+        },
+        countdown=1,
+    )
