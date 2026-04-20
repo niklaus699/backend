@@ -4,3 +4,6 @@ drf-spectacular==0.29.0
 gunicorn==23.0.0
 sentry-sdk==2.39.0
 whitenoise==6.11.0
+channels==4.0.0
+channels-redis==4.2.1
+redis==5.0.3
