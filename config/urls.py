@@ -39,7 +39,8 @@ router = DefaultRouter()
 router.register('assets', AssetViewSet, basename='asset')
 router.register('findings', FindingViewSet, basename='finding')
 router.register('vulnerabilities', VulnerabilityViewSet, basename='vulnerability')
-
+def trigger_error(request):
+    return  1 / 0
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -51,6 +52,7 @@ urlpatterns = [
     path('api/', include(router.urls)),
     path('api/v1/health/', health_check, name='health_check'),
     path('api/ingestion/sync/',  AssetIngestionView.as_view(), name='ingestion-sync'),
+    path('sentry-debug/', trigger_error),
 ]
 
 if SpectacularAPIView and SpectacularSwaggerView:

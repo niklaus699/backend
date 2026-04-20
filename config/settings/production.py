@@ -88,12 +88,18 @@ SESSION_COOKIE_SAMESITE = os.getenv('SESSION_COOKIE_SAMESITE', 'Lax')
 CSRF_COOKIE_SECURE = True
 CSRF_COOKIE_HTTPONLY = True
 
+KOYEB_DOMAIN = os.getenv('ALLOWED_HOSTS', '').split(',')[0]
+
 CONTENT_SECURITY_POLICY = {
     "default-src": ("'self'",),
     "img-src": ("'self'", "data:", "https:"),
     "style-src": ("'self'", "'unsafe-inline'"),
     "script-src": ("'self'",),
-    "connect-src": ("'self'", "https:", "wss:"),
+    "connect-src": (
+        "'self'", 
+        f"https://{KOYEB_DOMAIN}", 
+        f"wss://{KOYEB_DOMAIN}"
+    ),
     "frame-ancestors": ("'none'",),
 }
 
