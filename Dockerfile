@@ -26,7 +26,11 @@ COPY . .
 
 # 5. Prepare Static Files
 # We use a dummy Secret Key so Django doesn't complain during the build
-RUN SECRET_KEY=build-dummy DJANGO_SECRET_KEY=build-dummy python manage.py collectstatic --noinput
+# 5. Prepare Static Files
+RUN SECRET_KEY=build-dummy \
+    DJANGO_SECRET_KEY=build-dummy \
+    DATABASE_URL=postgres://user:pass@localhost:5432/db \
+    python manage.py collectstatic --noinput
 
 # 6. Fix permissions and switch user
 RUN chown -R appuser:appuser /app

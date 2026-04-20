@@ -25,8 +25,16 @@ elif not ALLOWED_HOSTS:
 CORS_ALLOWED_ORIGINS = env_list('CORS_ALLOWED_ORIGINS')
 CSRF_TRUSTED_ORIGINS = env_list('CSRF_TRUSTED_ORIGINS')
 
+
+db_url = os.getenv('DATABASE_URL')
+if not db_url and SECRET_KEY == 'build-dummy':
+    # Dummy URL for collectstatic phase
+    db_url = 'postgres://user:pass@localhost:5432/db'
+elif not db_url:
+    raise ImproperlyConfigured('DATABASE_URL environment variable is required')
+
 db_config = dj_database_url.config(
-    default=env_required('DATABASE_URL'),
+    default=db_url,
     conn_max_age=env_int('CONN_MAX_AGE', 600),
     engine='django.db.backends.postgresql',
 )
