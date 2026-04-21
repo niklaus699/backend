@@ -33,10 +33,12 @@ if not db_url and SECRET_KEY == 'build-dummy':
 elif not db_url:
     raise ImproperlyConfigured('DATABASE_URL environment variable is required')
 
+DB_SSL_REQUIRE = os.getenv('DB_SSL_REQUIRE') or True
 db_config = dj_database_url.config(
     default=db_url,
     conn_max_age=env_int('CONN_MAX_AGE', 600),
     engine='django.db.backends.postgresql',
+    ssl_require=env_bool('DB_SSL_REQUIRE', True),
 )
 db_config.setdefault('OPTIONS', {})
 db_config['OPTIONS']['sslmode'] = os.getenv('DB_SSLMODE', 'require')
