@@ -89,7 +89,7 @@ SESSION_COOKIE_SAMESITE = 'None' # Required for cross-site WebSockets
 CSRF_COOKIE_SECURE = True
 CSRF_COOKIE_HTTPONLY = True
 
-KOYEB_DOMAIN = ALLOWED_HOSTS[0] if ALLOWED_HOSTS else ''
+AWS_DOMAIN = ALLOWED_HOSTS[0] if ALLOWED_HOSTS else ''
 
 CONTENT_SECURITY_POLICY = {
     "default-src": ("'self'",),
@@ -98,8 +98,8 @@ CONTENT_SECURITY_POLICY = {
     "script-src": ("'self'",),
     "connect-src": (
         "'self'", 
-        f"https://{KOYEB_DOMAIN}", 
-        f"wss://{KOYEB_DOMAIN}"
+        f"https://{AWS_DOMAIN}", 
+        f"wss://{AWS_DOMAIN}"
     ),
     "frame-ancestors": ("'none'",),
 }
@@ -107,7 +107,7 @@ CONTENT_SECURITY_POLICY = {
 SIMPLE_JWT = {
     **SIMPLE_JWT,
     'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=3),
     'ALGORITHM': 'HS256',
     'SIGNING_KEY': SECRET_KEY,
 }
@@ -202,8 +202,17 @@ CHANNEL_LAYERS = {
     },
 }
 
-#static files
-DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-STATICFILES_STORAGE = 'storages.backends.s3boto3.S3StaticStorage'
-AWS_STORAGE_BUCKET_NAME = os.environ['S3_BUCKET_NAME']
-AWS_S3_REGION_NAME = 'eu-west-1'
+# Configure S3-backed storage only when a bucket is supplied.
+S3_BUCKET_NAME = os.getenv('S3_BUCKET_NAME')
+if S3_BUCKET_NAME:
+    STORAGES = {
+        **STORAGES,
+        'default': {
+            'BACKEND': 'storages.backends.s3boto3.S3Boto3Storage',
+        },
+        'staticfiles': {
+            'BACKEND': 'storages.backends.s3boto3.S3StaticStorage',
+        },
+    }
+    AWS_STORAGE_BUCKET_NAME = S3_BUCKET_NAME
+    AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME', 'eu-west-1')
