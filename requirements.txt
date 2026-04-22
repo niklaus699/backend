@@ -1,1 +1,1 @@
-echo "-r requirements/production.txt"
+echo -r requirements/production.txt
