@@ -76,3 +76,7 @@ node_modules/
 
 # Docker (optional)
 .dockerignore
+# Elastic Beanstalk Files
+.elasticbeanstalk/*
+!.elasticbeanstalk/*.cfg.yml
+!.elasticbeanstalk/*.global.yml
