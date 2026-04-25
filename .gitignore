@@ -82,3 +82,9 @@ node_modules/
 !.elasticbeanstalk/*.global.yml
 aws/
 awscliv2.zip
+awscliv2.zip
+.aws/
+.ebextensions/
+.elasticbeanstalk/
+*.pem
+credentials
