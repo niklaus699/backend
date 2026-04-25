@@ -147,7 +147,6 @@ class AssetViewSet(viewsets.ModelViewSet):
         correlate_new_packages_for_asset.apply_async(
             kwargs={
                 'asset_id': str(asset.id),
-                'organization_id': str(asset.organization_id),
             },
             queue='correlation',
         )

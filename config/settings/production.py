@@ -89,7 +89,7 @@ SESSION_COOKIE_SAMESITE = 'None' # Required for cross-site WebSockets
 CSRF_COOKIE_SECURE = True
 CSRF_COOKIE_HTTPONLY = True
 
-AWS_DOMAIN = ALLOWED_HOSTS[0] if ALLOWED_HOSTS else ''
+LIVE_URL = ALLOWED_HOSTS[0] if ALLOWED_HOSTS else ''
 
 CONTENT_SECURITY_POLICY = {
     "default-src": ("'self'",),
@@ -98,8 +98,8 @@ CONTENT_SECURITY_POLICY = {
     "script-src": ("'self'",),
     "connect-src": (
         "'self'", 
-        f"https://{AWS_DOMAIN}", 
-        f"wss://{AWS_DOMAIN}"
+        f"https://{LIVE_URL}", 
+        f"wss://{LIVE_URL}"
     ),
     "frame-ancestors": ("'none'",),
 }

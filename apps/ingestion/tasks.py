@@ -219,27 +219,43 @@ def _parse_osv_vuln(data: dict) -> dict:
 
 
 def _extract_severity(data: dict) -> str:
-    """
-    OSV severity can live in multiple places. Normalize to our enum.
-    """
+    # Priority 1: top-level database_specific
     db_specific = data.get("database_specific", {})
-    if "severity" in db_specific:
-        sev_str = db_specific["severity"].lower()
-        if sev_str in ("critical", "high", "moderate", "medium", "low"):
-            return "medium" if sev_str == "moderate" else sev_str
+    sev = db_specific.get("severity", "").lower()
+    if sev in ("critical", "high", "moderate", "medium", "low"):
+        return "medium" if sev == "moderate" else sev
 
-    for sev in data.get("severity", []):
-        score = sev.get("score", "")
-        if score.startswith("CVSS:"):
-            return "medium"
+    # Priority 2: CVSS base score from severity array
+    for sev_entry in data.get("severity", []):
+        score_str = sev_entry.get("score", "")
+        if sev_entry.get("type") in ("CVSS_V3", "CVSS_V2") and score_str:
+            # Extract base score from vector: CVSS:3.1/AV:N/.../BS:7.5/...
+            # or just a plain number
+            try:
+                base = float(score_str)
+                return _cvss_to_severity(base)
+            except ValueError:
+                pass
+            # Try extracting from vector string
+            import re
+            match = re.search(r'(?:^|/)(\d+\.\d+)$', score_str)
+            if match:
+                return _cvss_to_severity(float(match.group(1)))
 
+    # Priority 3: affected[].database_specific
     for affected in data.get("affected", []):
-        db_specific = affected.get("database_specific", {})
-        if "severity" in db_specific:
-            sev_str = db_specific["severity"].lower()
-            if sev_str in ("critical", "high", "moderate", "medium", "low"):
-                return "medium" if sev_str == "moderate" else sev_str
+        sev = affected.get("database_specific", {}).get("severity", "").lower()
+        if sev in ("critical", "high", "moderate", "medium", "low"):
+            return "medium" if sev == "moderate" else sev
 
+    return Vulnerability.Severity.NONE
+
+
+def _cvss_to_severity(score: float) -> str:
+    if score >= 9.0: return "critical"
+    if score >= 7.0: return "high"
+    if score >= 4.0: return "medium"
+    if score > 0.0:  return "low"
     return Vulnerability.Severity.NONE
 
 
