@@ -59,7 +59,7 @@ CACHES = {
             'SOCKET_CONNECT_TIMEOUT': 5,
             'SOCKET_TIMEOUT': 5,
             'CONNECTION_POOL_KWARGS': {
-                'ssl_cert_reqs': None,
+                'ssl_cert_reqs': "none",
                 'retry_on_timeout': True,
             }
         },
@@ -183,10 +183,10 @@ if SENTRY_DSN:
 
 # Fix for Celery using Upstash SSL
 CELERY_BROKER_USE_SSL = {
-    'ssl_cert_reqs': None
+    'ssl_cert_reqs': "none"
 }
 CELERY_REDIS_BACKEND_USE_SSL = {
-    'ssl_cert_reqs': None
+    'ssl_cert_reqs': "none"
 }
 
 # Fix for Channels (WebSockets) using Upstash SSL
@@ -196,7 +196,7 @@ CHANNEL_LAYERS = {
         "CONFIG": {
             "hosts": [{
                 "address": os.getenv('REDIS_URL'),
-                "ssl_cert_reqs": None,
+                "ssl_cert_reqs": "none",
             }],
         },
     },
