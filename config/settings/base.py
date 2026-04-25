@@ -157,13 +157,13 @@ CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', REDIS_URL)
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', REDIS_URL)
-CELERY_TASK_ROUTES = {
-    'apps.ingestion.tasks.ingest_osv_ecosystem': {'queue': 'ingestion'},
-    'apps.ingestion.tasks.trigger_all_ecosystems': {'queue': 'ingestion'},
-    'apps.ingestion.tasks.correlate_vulnerability': {'queue': 'correlation'},
-    'apps.ingestion.tasks.rescore_and_broadcast_asset': {'queue': 'correlation'},
-    'apps.vulnerabilities.tasks.snapshot_risk_scores': {'queue': 'correlation'},
-}
+# CELERY_TASK_ROUTES = {
+#     'apps.ingestion.tasks.ingest_osv_ecosystem': {'queue': 'ingestion'},
+#     'apps.ingestion.tasks.trigger_all_ecosystems': {'queue': 'ingestion'},
+#     'apps.ingestion.tasks.correlate_vulnerability': {'queue': 'correlation'},
+#     'apps.ingestion.tasks.rescore_and_broadcast_asset': {'queue': 'correlation'},
+#     'apps.vulnerabilities.tasks.snapshot_risk_scores': {'queue': 'correlation'},
+# }
 CELERY_TASK_ALWAYS_EAGER = env_bool('CELERY_TASK_ALWAYS_EAGER', False)
 
 CHANNEL_LAYERS = {

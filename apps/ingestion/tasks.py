@@ -111,7 +111,6 @@ def ingest_osv_ecosystem(self, ecosystem: str, page_token: str | None = None):
     if next_page_token:
         ingest_osv_ecosystem.apply_async(
             kwargs={"ecosystem": ecosystem, "page_token": next_page_token},
-            queue="ingestion",
             countdown=2,
         )
 

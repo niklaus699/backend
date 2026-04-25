@@ -148,7 +148,6 @@ class AssetViewSet(viewsets.ModelViewSet):
             kwargs={
                 'asset_id': str(asset.id),
             },
-            queue='correlation',
         )
 
         return Response(

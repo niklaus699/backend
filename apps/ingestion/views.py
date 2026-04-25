@@ -144,7 +144,6 @@ class AssetIngestionView(APIView):
         from apps.ingestion.tasks import correlate_new_packages_for_asset
         correlate_new_packages_for_asset.apply_async(
             kwargs={'asset_id': str(asset.id),},
-            queue='correlation',
         )
 
         return Response({
