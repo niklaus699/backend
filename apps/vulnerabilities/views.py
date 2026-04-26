@@ -1,7 +1,7 @@
 from django.db.models import Count, Avg, Q
 from rest_framework import viewsets, mixins, status
 from rest_framework.decorators import action
-from rest_framework.pagination import CursorPagination
+from rest_framework.pagination import CursorPagination, PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
@@ -36,7 +36,7 @@ class FindingViewSet(
     """
     permission_classes = [IsAuthenticated, IsAnalystOrAbove]
     serializer_class = FindingDetailSerializer
-    pagination_class = FindingPagination
+    pagination_class = PageNumberPagination
     ordering_fields = ['risk_score', 'first_seen', 'status']
     ordering = ['-risk_score', '-first_seen']
 
