@@ -1,4 +1,4 @@
-FROM python:3.14-slim
+FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
@@ -9,8 +9,8 @@ WORKDIR /app
 
 # 1. Install system dependencies
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends build-essential libpq-dev curl \
-    && rm -rf /var/lib/apt/lists/*
+  && apt-get install -y --no-install-recommends build-essential libpq-dev curl \
+  && rm -rf /var/lib/apt/lists/*
 
 # 2. Create the user ONCE
 RUN useradd -m -u 1000 appuser
@@ -28,9 +28,9 @@ COPY . .
 # We use a dummy Secret Key so Django doesn't complain during the build
 # 5. Prepare Static Files
 RUN SECRET_KEY=build-dummy \
-    DJANGO_SECRET_KEY=build-dummy \
-    DATABASE_URL=postgres://user:pass@localhost:5432/db \
-    python manage.py collectstatic --noinput
+  DJANGO_SECRET_KEY=build-dummy \
+  DATABASE_URL=postgres://user:pass@localhost:5432/db \
+  python manage.py collectstatic --noinput
 
 # 6. Fix permissions and switch user
 RUN chown -R appuser:appuser /app
@@ -40,7 +40,7 @@ USER appuser
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/api/health/ || exit 1
+  CMD curl -f http://localhost:8000/api/health/ || exit 1
 
 # 7. Run migrations and start server
 CMD ["sh", "-c", "python manage.py migrate && daphne -b 0.0.0.0 -p 8000 config.asgi:application"]
