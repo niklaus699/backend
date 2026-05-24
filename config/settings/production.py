@@ -9,163 +9,149 @@ from .utils import env_bool, env_int, env_list, env_required
 
 DEBUG = False
 # Uses the real key if present, falls back to the build-dummy only during Docker build
-SECRET_KEY = os.getenv('SECRET_KEY') or os.getenv('DJANGO_SECRET_KEY')
+SECRET_KEY = os.getenv("SECRET_KEY") or os.getenv("DJANGO_SECRET_KEY")
 if not SECRET_KEY:
-    raise ImproperlyConfigured('SECRET_KEY environment variable is required')
+    raise ImproperlyConfigured("SECRET_KEY environment variable is required")
 
 
-ALLOWED_HOSTS = env_list('ALLOWED_HOSTS')
+ALLOWED_HOSTS = env_list("ALLOWED_HOSTS")
 
-if not ALLOWED_HOSTS and SECRET_KEY != 'build-dummy':
-    raise ImproperlyConfigured('ALLOWED_HOSTS must be configured for production')
+if not ALLOWED_HOSTS and SECRET_KEY != "build-dummy":
+    raise ImproperlyConfigured("ALLOWED_HOSTS must be configured for production")
 elif not ALLOWED_HOSTS:
     # Fallback for collectstatic during docker build
-    ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+    ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 
-CORS_ALLOWED_ORIGINS = env_list('CORS_ALLOWED_ORIGINS')
-CSRF_TRUSTED_ORIGINS = env_list('CSRF_TRUSTED_ORIGINS')
+CORS_ALLOWED_ORIGINS = env_list("CORS_ALLOWED_ORIGINS")
+CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS")
 
 
-db_url = os.getenv('DATABASE_URL')
-if not db_url and SECRET_KEY == 'build-dummy':
+db_url = os.getenv("DATABASE_URL")
+if not db_url and SECRET_KEY == "build-dummy":
     # Dummy URL for collectstatic phase
-    db_url = 'postgres://user:pass@localhost:5432/db'
+    db_url = "postgres://user:pass@localhost:5432/db"
 elif not db_url:
-    raise ImproperlyConfigured('DATABASE_URL environment variable is required')
+    raise ImproperlyConfigured("DATABASE_URL environment variable is required")
 
-DB_SSL_REQUIRE = os.getenv('DB_SSL_REQUIRE') or True
+DB_SSL_REQUIRE = os.getenv("DB_SSL_REQUIRE") or True
 db_config = dj_database_url.config(
     default=db_url,
-    conn_max_age=env_int('CONN_MAX_AGE', 600),
-    engine='django.db.backends.postgresql',
-    ssl_require=env_bool('DB_SSL_REQUIRE', True),
+    conn_max_age=env_int("CONN_MAX_AGE", 600),
+    engine="django.db.backends.postgresql",
+    ssl_require=env_bool("DB_SSL_REQUIRE", True),
 )
-db_config.setdefault('OPTIONS', {})
-db_config['OPTIONS']['sslmode'] = os.getenv('DB_SSLMODE', 'require')
-DATABASES = {'default': db_config}
+db_config.setdefault("OPTIONS", {})
+db_config["OPTIONS"]["sslmode"] = os.getenv("DB_SSLMODE", "require")
+DATABASES = {"default": db_config}
 
 
 INSTALLED_APPS += [
-    'whitenoise.runserver_nostatic', # Optional, for whitenoise
+    "whitenoise.runserver_nostatic",  # Optional, for whitenoise
 ]
 
 CACHES = {
-    'default': {
-        'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': os.getenv('CACHE_URL', os.getenv('REDIS_URL', 'redis://127.0.0.1:6379/1')),
-        'OPTIONS': {
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-            'IGNORE_EXCEPTIONS': True,
-            'SOCKET_CONNECT_TIMEOUT': 5,
-            'SOCKET_TIMEOUT': 5,
-            'CONNECTION_POOL_KWARGS': {
-                'ssl_cert_reqs': "none",
-                'retry_on_timeout': True,
-            }
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": os.getenv(
+            "CACHE_URL", os.getenv("REDIS_URL", "redis://127.0.0.1:6379/1")
+        ),
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            "IGNORE_EXCEPTIONS": True,
+            "SOCKET_CONNECT_TIMEOUT": 5,
+            "SOCKET_TIMEOUT": 5,
+            "CONNECTION_POOL_KWARGS": {
+                "ssl_cert_reqs": "none",
+                "retry_on_timeout": True,
+            },
         },
     }
 }
 
 
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = os.getenv('EMAIL_HOST', '')
-EMAIL_PORT = env_int('EMAIL_PORT', 587)
-EMAIL_USE_TLS = env_bool('EMAIL_USE_TLS', True)
-EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
-EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@sentinel.local')
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = os.getenv("EMAIL_HOST", "")
+EMAIL_PORT = env_int("EMAIL_PORT", 587)
+EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True)
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@sentinel.local")
 
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-USE_X_FORWARDED_HOST = env_bool('USE_X_FORWARDED_HOST', True)
-SECURE_SSL_REDIRECT = env_bool('SECURE_SSL_REDIRECT', True)
-SECURE_HSTS_SECONDS = env_int('SECURE_HSTS_SECONDS', 31536000)
-SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool('SECURE_HSTS_INCLUDE_SUBDOMAINS', True)
-SECURE_HSTS_PRELOAD = env_bool('SECURE_HSTS_PRELOAD', True)
-SECURE_REFERRER_POLICY = 'same-origin'
-SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin'
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+USE_X_FORWARDED_HOST = env_bool("USE_X_FORWARDED_HOST", True)
+SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT", True)
+SECURE_HSTS_SECONDS = env_int("SECURE_HSTS_SECONDS", 31536000)
+SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool("SECURE_HSTS_INCLUDE_SUBDOMAINS", True)
+SECURE_HSTS_PRELOAD = env_bool("SECURE_HSTS_PRELOAD", True)
+SECURE_REFERRER_POLICY = "same-origin"
+SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin"
 SESSION_COOKIE_SECURE = True
 SESSION_COOKIE_HTTPONLY = True
-SESSION_COOKIE_SAMESITE = 'None' # Required for cross-site WebSockets
+SESSION_COOKIE_SAMESITE = "None"  # Required for cross-site WebSockets
 CSRF_COOKIE_SECURE = True
 CSRF_COOKIE_HTTPONLY = True
 
-LIVE_URL = ALLOWED_HOSTS[0] if ALLOWED_HOSTS else ''
+LIVE_URL = ALLOWED_HOSTS[0] if ALLOWED_HOSTS else ""
 
 CONTENT_SECURITY_POLICY = {
     "default-src": ("'self'",),
     "img-src": ("'self'", "data:", "https:"),
     "style-src": ("'self'", "'unsafe-inline'"),
     "script-src": ("'self'",),
-    "connect-src": (
-        "'self'", 
-        f"https://{LIVE_URL}", 
-        f"wss://{LIVE_URL}"
-    ),
+    "connect-src": ("'self'", f"https://{LIVE_URL}", f"wss://{LIVE_URL}"),
     "frame-ancestors": ("'none'",),
 }
 
 SIMPLE_JWT = {
     **SIMPLE_JWT,
-    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=3),
-    'ALGORITHM': 'HS256',
-    'SIGNING_KEY': SECRET_KEY,
+    "ACCESS_TOKEN_LIFETIME": timedelta(hours=1),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=3),
+    "ALGORITHM": "HS256",
+    "SIGNING_KEY": SECRET_KEY,
 }
 
 REST_FRAMEWORK = {
     **REST_FRAMEWORK,
-    'DEFAULT_THROTTLE_CLASSES': [
-        'rest_framework.throttling.AnonRateThrottle',
-        'rest_framework.throttling.UserRateThrottle',
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
     ],
-    'DEFAULT_THROTTLE_RATES': {
-        'anon': os.getenv('THROTTLE_ANON_RATE', '100/hour'),
-        'user': os.getenv('THROTTLE_USER_RATE', '1000/hour'),
-        'login': os.getenv('THROTTLE_LOGIN_RATE', '5/minute'),
-        'discovery': os.getenv('THROTTLE_DISCOVERY_RATE', '10/hour'),
-        'ingestion': os.getenv('THROTTLE_INGESTION_RATE', '60/hour'),
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": os.getenv("THROTTLE_ANON_RATE", "100/hour"),
+        "user": os.getenv("THROTTLE_USER_RATE", "1000/hour"),
+        "login": os.getenv("THROTTLE_LOGIN_RATE", "5/minute"),
+        "discovery": os.getenv("THROTTLE_DISCOVERY_RATE", "10/hour"),
+        "ingestion": os.getenv("THROTTLE_INGESTION_RATE", "60/hour"),
     },
 }
 
-CELERY_RESULT_EXPIRES = env_int('CELERY_RESULT_EXPIRES', 3600)
+CELERY_RESULT_EXPIRES = env_int("CELERY_RESULT_EXPIRES", 3600)
 CELERY_TASK_TRACK_STARTED = True
 
-LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
-LOG_FILE = os.getenv('LOG_FILE', '')
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {
-            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
-            'style': '{',
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message}",
+            "style": "{",
         },
     },
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-            'formatter': 'verbose',
-            'level': LOG_LEVEL,
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+            "level": LOG_LEVEL,
         },
     },
-    'root': {
-        'handlers': ['console'],
-        'level': LOG_LEVEL,
+    "root": {
+        "handlers": ["console"],
+        "level": LOG_LEVEL,
     },
 }
 
-if LOG_FILE:
-    LOGGING['handlers']['file'] = {
-        'level': LOG_LEVEL,
-        'class': 'logging.handlers.RotatingFileHandler',
-        'filename': LOG_FILE,
-        'maxBytes': 1024 * 1024 * 10,
-        'backupCount': 10,
-        'formatter': 'verbose',
-    }
-    LOGGING['root']['handlers'].append('file')
-
-SENTRY_DSN = os.getenv('SENTRY_DSN')
+SENTRY_DSN = os.getenv("SENTRY_DSN")
 if SENTRY_DSN:
     try:
         import sentry_sdk
@@ -176,43 +162,41 @@ if SENTRY_DSN:
         sentry_sdk.init(
             dsn=SENTRY_DSN,
             integrations=[DjangoIntegration()],
-            traces_sample_rate=float(os.getenv('SENTRY_TRACES_SAMPLE_RATE', '0.1')),
-            environment=os.getenv('ENVIRONMENT', 'production'),
+            traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1")),
+            environment=os.getenv("ENVIRONMENT", "production"),
         )
 
 
 # Fix for Celery using Upstash SSL
-CELERY_BROKER_USE_SSL = {
-    'ssl_cert_reqs': "none"
-}
-CELERY_REDIS_BACKEND_USE_SSL = {
-    'ssl_cert_reqs': "none"
-}
+CELERY_BROKER_USE_SSL = {"ssl_cert_reqs": "none"}
+CELERY_REDIS_BACKEND_USE_SSL = {"ssl_cert_reqs": "none"}
 
 # Fix for Channels (WebSockets) using Upstash SSL
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [{
-                "address": os.getenv('REDIS_URL'),
-                "ssl_cert_reqs": "none",
-            }],
+            "hosts": [
+                {
+                    "address": os.getenv("REDIS_URL"),
+                    "ssl_cert_reqs": "none",
+                }
+            ],
         },
     },
 }
 
 # Configure S3-backed storage only when a bucket is supplied.
-S3_BUCKET_NAME = os.getenv('S3_BUCKET_NAME')
+S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME")
 if S3_BUCKET_NAME:
     STORAGES = {
         **STORAGES,
-        'default': {
-            'BACKEND': 'storages.backends.s3boto3.S3Boto3Storage',
+        "default": {
+            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
         },
-        'staticfiles': {
-            'BACKEND': 'storages.backends.s3boto3.S3StaticStorage',
+        "staticfiles": {
+            "BACKEND": "storages.backends.s3boto3.S3StaticStorage",
         },
     }
     AWS_STORAGE_BUCKET_NAME = S3_BUCKET_NAME
-    AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME', 'eu-west-1')
+    AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME", "eu-west-1")
